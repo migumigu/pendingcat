@@ -1,48 +1,72 @@
-from functools import wraps
+# -*- coding: utf-8 -*-
 
-def validate_params(valid_options, params):
-    """
-    Helps us validate the parameters for the request
+import yaml
+import oauth2 as oauth
+import urlparse
+import pandas as pd
+from pandas import Series, DataFrame
 
-    :param valid_options: a list of strings of valid options for the
-                          api request
-    :param params: a dict, the key-value store which we really only care about
-                   the key which has tells us what the user is using for the
-                   API request
+#此函数用于创建配置文件时,读取用户输入的关键key,并将key存入指定的配置文件中
+def new_oauth(yaml_path):
+    '''
+    Return the consumer and oauth tokens with three-legged OAuth process and
+    save in a yaml file in the user's home directory.
+    '''
 
-    :returns: None or throws an exception if the validation fails
-    """
-    #crazy little if statement hanging by himself :(
-    if not params:
-        return
+    print 'Retrieve consumer key and consumer secret from http://www.tumblr.com/oauth/apps'
+    consumer_key = raw_input('Paste the consumer key here: ')
+    consumer_secret = raw_input('Paste the consumer secret here: ')
 
-    #We only allow one version of the data parameter to be passed
-    data_filter = ['data', 'source', 'external_url', 'embed']
-    multiple_data = [key for key in params.keys() if key in data_filter]
-    if len(multiple_data) > 1:
-        raise Exception("You can't mix and match data parameters")
+    request_token_url = 'http://www.tumblr.com/oauth/request_token'
+    authorize_url = 'http://www.tumblr.com/oauth/authorize'
+    access_token_url = 'http://www.tumblr.com/oauth/access_token'
 
-    #No bad fields which are not in valid options can pass
-    disallowed_fields = [key for key in params.keys() if key not in valid_options]
-    if disallowed_fields:
-        field_strings = ",".join(disallowed_fields)
-        raise Exception("{0} are not allowed fields".format(field_strings))
+    consumer = oauth.Consumer(consumer_key, consumer_secret)
+    client = oauth.Client(consumer)
+ 
+    # Get request token
+    resp, content = client.request(request_token_url, "POST")
+    request_token =  urlparse.parse_qs(content)
 
-def validate_blogname(fn):
-    """
-    Decorator to validate the blogname and let you pass in a blogname like:
-        client.blog_info('codingjester')
-    or
-        client.blog_info('codingjester.tumblr.com')
-    or
-        client.blog_info('blog.johnbunting.me')
+    # Redirect to authentication page
+    print '\nPlease go here and authorize:\n%s?oauth_token=%s' % (authorize_url, request_token['oauth_token'][0])
+    redirect_response = raw_input('Allow then paste the full redirect URL here:\n')
 
-    and query all the same blog.
-    """
-    @wraps(fn)
-    def add_dot_tumblr(*args, **kwargs):
-        if (len(args) > 1 and ("." not in args[1])):
-            args = list(args)
-            args[1] += ".tumblr.com"
-        return fn(*args, **kwargs)
-    return add_dot_tumblr
+    # Retrieve oauth verifier
+    url = urlparse.urlparse(redirect_response)
+    query_dict = urlparse.parse_qs(url.query)
+    oauth_verifier = query_dict['oauth_verifier'][0]
+
+    # Request access token
+    token = oauth.Token(request_token['oauth_token'], request_token['oauth_token_secret'][0])
+    token.set_verifier(oauth_verifier)
+    client = oauth.Client(consumer, token)
+
+    resp, content = client.request(access_token_url, "POST")
+    access_token = urlparse.parse_qs(content)
+
+    tokens = {
+        'consumer_key': consumer_key,
+        'consumer_secret': consumer_secret,
+        'oauth_token': access_token['oauth_token'][0],
+        'oauth_token_secret': access_token['oauth_token_secret'][0]
+    }
+
+    yaml_file = open(yaml_path, 'w+')
+    yaml.dump(tokens, yaml_file, indent=2)
+    yaml_file.close()
+
+    return tokens
+
+#对DataFrame数据按一系列规则做排序,返回推荐的结果.不智能的瞎子排序
+def blind_sort(dt):
+    print type(dt)
+    df = pd.DataFrame(dt['posts'],columns=['id','reblog_key','blog_name','type','can_like','liked','followed','is_nsfw','note_count','date','blog'])
+    #打印入参类型,打印df内容
+    print type(df)
+    df = df[df['can_like'] == True]
+    #print df
+    #sort带key,升降序
+    dfsort = df.sort(['note_count','is_nsfw'],ascending=[False,True])
+    print dfsort
+    return dfsort

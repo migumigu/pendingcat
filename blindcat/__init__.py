@@ -1,3 +1,3 @@
-#from helpers import validate_params, validate_blogname
+from recommend import new_oauth, blind_sort
 #from request import TumblrRequest
 
