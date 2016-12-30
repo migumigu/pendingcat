@@ -40,7 +40,7 @@ if __name__ == '__main__':
     )
 
     #创建一条中文文本博客
-    zwtxt = 'Pending cat No.1 中文测试'
+    #zwtxt = 'Pending cat No.1 中文测试'
 #    client.create_text("pendingcatno1", state="published", slug="testing-text-posts", title= unicode(zwtxt, "utf-8"), body="hello,tumblr!")
 
     #获取主页数据,并通过pandas对数据做抽取和表格化,展示获取到的数据

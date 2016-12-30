@@ -60,13 +60,16 @@ def new_oauth(yaml_path):
 
 #对DataFrame数据按一系列规则做排序,返回推荐的结果.不智能的瞎子排序
 def blind_sort(dt):
-    print type(dt)
+    #print type(dt)
     df = pd.DataFrame(dt['posts'],columns=['id','reblog_key','blog_name','type','can_like','liked','followed','is_nsfw','note_count','date','blog'])
     #打印入参类型,打印df内容
     print type(df)
+    
+    #排除不能点赞的帖子,比如已经点赞过的帖子,或是自己发的帖子
     df = df[df['can_like'] == True]
     #print df
-    #sort带key,升降序
+    
+    #sort带key,升降序,按热度/nsfw
     dfsort = df.sort(['note_count','is_nsfw'],ascending=[False,True])
     print dfsort
     return dfsort
