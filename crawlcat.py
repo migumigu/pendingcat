@@ -40,18 +40,35 @@ if __name__ == '__main__':
         tokens['oauth_token_secret']
     )
 
+    startpos = 0
+    while True:
+        followblogs = client.following(offset=startpos)
+        df = pd.DataFrame(followblogs['blogs'])
+        if len(df) is 0:
+            break
+        startpos += len(df)
+        print df['name']
+
     #抓取某个指定博客的所有博客数据，并将其存入文件之中
     while True:
-        name = input("pls enter the blog name：(x:out)\n")
+        name = raw_input("请输入博客名:(x:退出)\n")
         print('hello',name)
         if name is 'x':
             break
-        posts = client.posts(name)
-        frame = pd.DataFrame(posts['posts'])
-        print frame['id'].count()
-        if frame['id'].count() is 0:
-            break
-        frame.to_csv(name + '.csv', encoding='utf-8', mode='a')
+        startpos = 0
+        isshowhead = True
+        while True:
+            posts = client.posts(name, offset=startpos)
+            frame = pd.DataFrame(posts['posts'])
+            postsnum = len(frame)
+            print ('get:',postsnum,' sum:', startpos)
+            if postsnum is 0:
+                break
+            frame.to_csv(name + '.csv', encoding='utf-8', mode='a', header=isshowhead)
+            startpos += postsnum
+            # 第一次把head给加上,后面批次的数据不需要加头
+            isshowhead = False
+        
     #创建一条中文文本博客a
 #    zwtxt = 'Pending cat No.1 中文测试'
 #    client.create_text("pendingcatno1", state="published", slug="testing-text-posts", title= unicode(zwtxt, "utf-8"), body="hello,tumblr!")
